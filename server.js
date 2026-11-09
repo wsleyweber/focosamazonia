@@ -203,7 +203,7 @@ async function buscarFocos(fonte, dias) {
     throw new Error("resposta inesperada da FIRMS: " + texto.trim().slice(0, 100).replace(/\s+/g, " "));
   // O leitor já descarta o que está fora do BBOX antes de criar os objetos (o arquivo sem chave cobre a América do Sul toda)
   let focos = parsearCsvFirms(texto, { fonte, satelite: NOME_FONTE[fonte] || fonte, bbox: BBOX });
-  if (MAP_KEY) focos = filtrarJanelaFocos(focos, dias);
+  focos = filtrarJanelaFocos(focos, dias);
   return focos;
 }
 

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Monitor de Focos – Amazônia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="mapa" aria-label="Mapa da região monitorada" role="application"></div>
+<nav class="acoesTopo" aria-label="Controles do mapa">
+    <button id="botaoNova" type="button" aria-label="Nova área" title="Nova área" aria-expanded="false" aria-controls="cartaoNova">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button id="botaoFiltros" class="botaoFiltros" type="button" aria-label="Filtros" title="Filtros" aria-haspopup="true" aria-expanded="false" aria-controls="menuFiltros">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></svg>
+      <span id="indicadorFiltros" class="indicadorBotao indicadorFiltros" aria-hidden="true" hidden></span>
+    </button>
+    <button id="botaoAreas" type="button" aria-label="Áreas" title="Áreas" aria-haspopup="true" aria-expanded="false" aria-controls="menuAreas painelArea">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>
+      <span id="indicadorAreas" class="indicadorBotao indicadorAreas" aria-hidden="true" hidden></span>
+    </button>
+</nav>
+
+<div id="estadoMapa" class="estadoMapa" role="status" aria-live="polite" hidden></div>
+<div id="avisoZoom" class="avisoZoom" role="status" aria-live="polite" hidden></div>
+<div id="semAreas" class="semAreas" role="status" hidden>Nenhuma área monitorada. Toque em + para adicionar.</div>
+<div id="faixaEscolha" class="faixaEscolha" hidden>Clique no mapa para escolher o local · Esc cancela</div>
+
+<section id="menuAreas" class="popover" aria-label="Áreas monitoradas" hidden>
+  <span class="folhaHandle" aria-hidden="true"></span>
+  <div class="cabecalhoPopover"><h2>Áreas</h2><button class="fecharPainel" type="button" aria-label="Fechar áreas">×</button></div>
+  <div id="listaAreas" class="listaAreas"></div>
+</section>
+<section id="menuFiltros" class="popover" aria-label="Filtros e fontes" hidden>
+  <span class="folhaHandle" aria-hidden="true"></span>
+  <div class="cabecalhoPopover"><h2>Filtros</h2><button class="fecharPainel" type="button" aria-label="Fechar filtros">×</button></div>
+  <div class="estadoFocos">
+    <p id="estado" class="estadoFocosTexto" aria-live="polite">Carregando focos…</p>
+    <button id="atualizar" class="botaoAtualizar" type="button" aria-label="Atualizar agora">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"/></svg><span>Atualizar agora</span>
+    </button>
+  </div>
+  <label>Satélite
+    <select id="fonte">
+      <option value="todos">Todos (mescla)</option>
+      <option value="VIIRS_NOAA20_NRT">VIIRS NOAA-20</option>
+      <option value="VIIRS_NOAA21_NRT">VIIRS NOAA-21</option>
+      <option value="MODIS_NRT">MODIS</option>
+      <option value="INPE_GEO" disabled>INPE GOES/MSG (modo off)</option>
+    </select>
+  </label>
+  <label>Período
+    <select id="dias">
+      <option value="1">Últimas 24 h</option><option value="2">2 dias</option>
+      <option value="3">3 dias</option><option value="5">5 dias</option>
+    </select>
+  </label>
+  <p id="dicaPeriodo" class="dica" hidden>Períodos acima de 24 h exigem FIRMS_MAP_KEY no servidor.</p>
+  <label>Confiança mínima
+    <select id="confianca"><option value="0">Todas</option><option value="1">Nominal ou alta</option><option value="2">Só alta</option></select>
+  </label>
+  <label>Confirmação
+    <select id="confirma"><option value="1">Qualquer satélite</option><option value="2">2 ou mais satélites</option></select>
+  </label>
+  <label class="check"><input id="mostrarGeo" type="checkbox" checked> Mostrar focos não confirmados (só geoestacionário)</label>
+  <button id="restaurarFiltros" type="button">Restaurar padrão</button>
+  <p id="estadoGeo" class="dica" hidden></p>
+  <h3 class="subtituloMenu">Detecções brutas por fonte (antes dos filtros)</h3>
+  <div id="porSatelite" class="estado"></div>
+  <p class="dica">A página atualiza automaticamente a cada 10 minutos.</p>
+</section>
+
+<aside id="painelArea" class="cartao" aria-label="Detalhes da área" tabindex="-1" hidden></aside>
+<section id="cartaoNova" class="cartao" aria-label="Nova área monitorada" hidden>
+  <span class="folhaHandle" aria-hidden="true"></span>
+  <div class="cabecalhoCartao"><h2>Nova área</h2></div>
+  <form id="form">
+    <label class="campoForm">Nome<input id="nome" placeholder="Área de interesse" required maxlength="120"></label>
+    <div class="seletorModo" role="group" aria-label="Tipo de área">
+      <button id="modoPonto" type="button" class="ativo" aria-pressed="true">Ponto e raio</button>
+      <button id="modoImovel" type="button" aria-pressed="false">Imóvel</button>
+    </div>
+    <div id="blocoPonto">
+      <div class="campoPar">
+        <label class="campoForm">Latitude<input id="lat" inputmode="decimal" placeholder="-00.0000" required></label>
+        <label class="campoForm">Longitude<input id="lon" inputmode="decimal" placeholder="-00.0000" required></label>
+      </div>
+      <label class="campoForm">Raio (km)<input id="raio" type="number" min="0.1" max="500" step="any" value="25" required></label>
+      <p class="dica">Use o perímetro da propriedade mais uma folga de poucos km.</p>
+      <p id="avisoRaio" class="dica areaGrande" hidden>Raio grande: os alertas ficam menos precisos.</p>
+    </div>
+    <div id="blocoImovel" hidden>
+      <label class="campoForm">Arquivos do imóvel<input id="arquivoShape" type="file" accept=".shp,.dbf,.prj,.zip" multiple></label>
+      <p class="dica">Selecione os arquivos do imóvel (.shp, .prj e .dbf) separadamente ou um .zip com todos eles. O polígono deve estar em SIRGAS 2000, WGS 84 ou UTM.</p>
+      <label class="campoForm">Folga em volta do imóvel (km)<input id="folga" type="number" min="0" max="50" step="any" value="5" disabled></label>
+      <p class="dica">Focos até essa distância do limite do imóvel também são monitorados.</p>
+      <p id="resumoImovel" class="dica" role="status" hidden></p>
+    </div>
+    <label class="campoForm">Webhook (opcional)<input id="webhookUrl" type="url" placeholder="https://seusite.com/api/webhooks/… ou endpoint"></label>
+    <p id="erroForm" class="erro" role="alert"></p>
+    <div class="acoesForm">
+      <button id="escolherLocal" type="button">Escolher no mapa</button>
+      <button class="primario" type="submit">Adicionar área</button>
+      <button type="button" data-fechar-nova>Cancelar</button>
+    </div>
+  </form>
+</section>
+<section id="legenda" class="legenda aberta" aria-label="Legenda do mapa">
+  <div class="cabecalhoLegenda">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h2M10 7h10M4 12h2M10 12h10M4 17h2M10 17h10"/></svg>
+    <span class="rotuloLegenda">Legenda</span>
+    <button id="botaoLegenda" class="fecharPainel" type="button" aria-label="Recolher legenda" aria-expanded="true">×</button>
+  </div>
+  <div id="corpoLegenda" class="corpoLegenda">
+    <div class="grupoLegenda">
+      <h3>Potência do foco</h3>
+      <div id="amostrasPotencia" class="potenciasLegenda"></div>
+    </div>
+    <div class="grupoLegenda">
+      <h3>Confirmação</h3>
+      <div class="linhaLegenda"><span id="amostraUmSat" class="amostraFoco"></span><span>Visto por 1 satélite</span></div>
+      <div class="linhaLegenda"><span id="amostraMultiSat" class="amostraFoco"></span><span>Visto por 2 ou mais satélites</span></div>
+    </div>
+    <div class="grupoLegenda">
+      <h3>Idade do foco</h3>
+      <div id="amostrasIdade" class="idadeLegenda"></div>
+    </div>
+    <div id="legendaGeo" class="grupoLegenda" hidden>
+      <h3>Só geoestacionário</h3>
+      <div class="linhaLegenda"><span id="amostraGeo" class="amostraFoco"></span><span>Não confirmado, sem potência</span></div>
+    </div>
+    <div class="grupoLegenda">
+      <h3>Áreas</h3>
+      <div class="linhaLegenda areasLegenda">
+        <span class="areaLegendaItem"><i class="areaLegenda" data-nivel="ok"></i><span>Sem focos</span></span>
+        <span class="areaLegendaItem"><i class="areaLegenda" data-nivel="atencao"></i><span>Atenção</span></span>
+        <span class="areaLegendaItem"><i class="areaLegenda" data-nivel="alto"></i><span>Alerta</span></span>
+      </div>
+    </div>
+    <div class="linhaLegenda"><svg class="amostraVento" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 20 21 12 17 4 21Z" fill="#1f6fb2" stroke="white" stroke-width="1.5"/></svg><span>Direção do vento</span></div>
+  </div>
+  <button id="abrirLegenda" class="abrirLegenda" type="button" aria-label="Mostrar legenda" aria-expanded="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h2M10 7h10M4 12h2M10 12h10M4 17h2M10 17h10"/></svg>
+  </button>
+</section>
+
+<script src="regras-zoom.js" defer></script>
+<script src="area-geo.js" defer></script>
+<script src="shapefile.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>

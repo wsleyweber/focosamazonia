@@ -1,0 +1,14 @@
+# Finais de linha: texto sempre em LF no repositório, independente do sistema de quem commita.
+* text=auto eol=lf
+
+# Binários: não tocar.
+*.ttf binary
+*.png binary
+*.shp binary
+*.shx binary
+*.dbf binary
+*.cpg binary
+*.prj binary
+
+# Amostras reais de CSV usadas nos testes: preservar os bytes originais (inclusive CRLF, se houver).
+testes/amostras/*.csv -text

@@ -1,0 +1,409 @@
+/* Monitor de Focos MT: estilos. Elementos flutuantes claros, canto reto, Montserrat. */
+:root {
+  --bg: #f3f1ec; --painel: #fbfaf7; --texto: #1d211c; --suave: #50584f; --linha: #d9d6cc;
+  --brasa: #d9480f; --ok: #2f7d4f; --atencao: #a45e00; --alto: #b42323; --vento: #1f6fb2;
+  --superficie: #ffffff; --sombra: 0 2px 6px rgba(0,0,0,.30);
+  --fonte: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { font: 14px/1.45 var(--fonte); color: var(--texto); background: var(--bg); }
+button, input, select { font: inherit; color: inherit; }
+button, select, input { min-height: 40px; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--painel); padding: 8px 11px; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+button:hover:not(:disabled) { border-color: var(--vento); }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+  outline: 3px solid var(--vento); outline-offset: 2px;
+}
+#mapa { position: fixed; inset: 0; background: var(--bg); z-index: 0; }
+.leaflet-container { font: inherit; background: var(--bg); }
+.leaflet-control-attribution { margin-bottom: 12px !important; font-size: 11px !important; }
+.cartao, .popover, .legenda, .faixaEscolha, .estadoMapa, .avisoZoom, .acoesTopo button {
+  background: var(--superficie); border: 1px solid var(--linha); box-shadow: var(--sombra);
+}
+.acoesTopo {
+  position: fixed; z-index: 1300; top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right));
+  display: grid; gap: 8px;
+}
+.acoesTopo button {
+  position: relative; display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 9px;
+  border-radius: var(--raio); transition: background-color .15s, border-color .15s, box-shadow .15s, transform .15s;
+}
+.acoesTopo button:hover { background: var(--painel); }
+.acoesTopo button[aria-expanded="true"], .acoesTopo #botaoNova:hover { border-color: var(--brasa); box-shadow: var(--sombra); }
+.acoesTopo button:active { transform: scale(.96); }
+.acoesTopo button:focus-visible { outline: 2px solid var(--vento); outline-offset: 2px; }
+.acoesTopo svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.indicadorBotao { position: absolute; top: -4px; right: -4px; pointer-events: none; }
+.indicadorFiltros {
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; display: grid; place-items: center;
+  color: #fff; background: var(--brasa); font-size: 10px; font-weight: 700; line-height: 1;
+}
+.indicadorFiltros[hidden], .indicadorAreas[hidden] { display: none; }
+.indicadorAreas { width: 11px; height: 11px; border: 2px solid var(--painel); border-radius: 50%; }
+.indicadorAreas.alto { background: var(--alto); }
+.indicadorAreas.atencao { background: var(--atencao); }
+/* Indicador de carregamento do botão Filtros: anel circular centralizado que gira em torno do próprio centro.
+   (Antes era um quadrado maior que o botão, que balançava para fora do ícone.) */
+.botaoFiltros.carregando::before {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px;
+  box-sizing: border-box; border: 2px solid var(--linha); border-top-color: var(--brasa); border-radius: 50%;
+  animation: girar .8s linear infinite; pointer-events: none;
+}
+.botaoFiltros.carregando > svg { opacity: .45; }
+.estadoFocos { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.estadoFocosTexto { min-width: 0; margin: 0; color: var(--suave); font-size: 12px; }
+.botaoAtualizar { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 9px; font-size: 12px; }
+.botaoAtualizar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.botaoAtualizar.carregando svg { animation: girar .9s linear infinite; }
+.primario { background: var(--brasa); color: #fff; border-color: var(--brasa); font-weight: 650; }
+.estado { color: var(--suave); font-size: 12px; }
+.estado.erro { color: var(--alto); }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .botaoFiltros.carregando::before, .botaoAtualizar.carregando svg { animation: none; }
+  /* sem movimento: anel parado, todo na cor de destaque */
+  .botaoFiltros.carregando::before { border-color: var(--brasa); }
+}
+button, a { -webkit-tap-highlight-color: transparent; }
+.estadoMapa {
+  position: fixed; z-index: 1200; bottom: max(72px, calc(env(safe-area-inset-bottom) + 60px)); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: min(480px, calc(100vw - 24px)); border-radius: 12px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 8px; font-size: 12px;
+}
+.estadoMapa:empty { display: none; }
+.estadoMapa.erro { color: var(--alto); }
+.estadoMapa .mensagemStatus { min-width: 0; overflow-wrap: anywhere; }
+.estadoMapa button { flex: 0 0 auto; min-height: 34px; padding: 5px 8px; font-size: 12px; }
+.estadoMapa .fecharStatus { width: 34px; min-width: 34px; padding: 0; font-size: 18px; }
+.semAreas {
+  position: fixed; z-index: 800; bottom: max(18px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  max-width: min(420px, calc(100vw - 24px)); padding: 6px 10px; border-radius: var(--raio); color: var(--suave);
+  background: var(--superficie); border: 1px solid var(--linha); box-shadow: var(--sombra); font-size: 12px; text-align: center;
+}
+.cartao {
+  position: fixed; z-index: 1100; top: max(16px, env(safe-area-inset-top)); right: max(76px, calc(env(safe-area-inset-right) + 60px));
+  width: min(390px, calc(100vw - 100px)); max-height: calc(100vh - 32px); overflow: auto;
+  border-radius: var(--raio); padding: 18px; animation: aparecer .16s ease-out;
+}
+.cartao[hidden], .popover[hidden], .estadoMapa[hidden], .avisoZoom[hidden], .semAreas[hidden], .faixaEscolha[hidden] { display: none !important; }
+@keyframes aparecer { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+.cabecalhoCartao { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.cabecalhoCartao h2 { margin: 0; font-size: 19px; line-height: 1.25; overflow-wrap: anywhere; }
+.cabecalhoCartao .selo { margin-top: 5px; }
+.fechar { margin-left: auto; flex: 0 0 auto; width: 40px; padding: 0; font-size: 20px; }
+.cartao p { margin: 8px 0; }
+.selo { display: inline-flex; align-items: center; border-radius: var(--raio); padding: 3px 9px; font-size: 14px; font-weight: 600; }
+.selo.ok { color: #27623f; background: #e6f1e9; }
+.selo.atencao { color: #754300; background: #fff0d6; }
+.selo.alto { color: #8f1d1d; background: #fbe7e7; }
+.resumoArea { color: var(--suave); }
+.secaoCartao { border-top: 1px solid var(--linha); padding-top: 12px; margin-top: 12px; }
+.secaoCartao h3 { margin: 0 0 7px; font-size: 13px; }
+.listaFocos, .listaAreas { display: grid; gap: 7px; }
+.itemFoco, .itemArea, .linhaDado { width: 100%; text-align: left; }
+.itemFoco { display: flex; align-items: center; gap: 8px; }
+.itemFoco span:nth-child(2) { min-width: 0; }
+.itemFoco small { display: block; color: var(--suave); }
+.pontoCor { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; border: 1px solid #222; }
+.pontoCor.losango { width: 9px; height: 9px; border-color: currentColor; border-radius: 0; transform: rotate(45deg); }
+.potenciaFoco { display: inline-flex; align-items: center; gap: 5px; }
+.acoesCartao { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.acoesCartao button, .acoesCartao a { display: inline-flex; align-items: center; min-height: 40px; }
+.acoesCartao a { color: var(--vento); padding: 8px; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--painel); text-decoration: none; }
+.popover { position: fixed; z-index: 1150; top: 16px; right: max(76px, calc(env(safe-area-inset-right) + 60px)); width: min(370px, calc(100vw - 100px)); max-height: calc(100vh - 32px); overflow: auto; border-radius: var(--raio); padding: 14px; }
+#menuFiltros { top: 68px; }
+.popover h2 { font-size: 15px; margin: 2px 0 10px; }
+.subtituloMenu { margin: 14px 0 5px; font-size: 12px; }
+.popover label { display: grid; gap: 4px; color: var(--suave); font-size: 12px; margin: 8px 0; }
+.popover .check { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.popover .check input { min-height: 18px; width: 18px; }
+.dica { color: var(--suave); font-size: 12px; margin: 6px 0; }
+.erro { color: var(--alto); }
+.vazio { color: var(--suave); padding: 8px; }
+.areaGrande { color: var(--atencao); font-size: 12px; }
+.campoForm { display: grid; gap: 4px; margin: 10px 0; color: var(--suave); font-size: 12px; }
+.campoForm input { width: 100%; }
+.campoPar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.acoesForm { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.faixaEscolha { position: fixed; z-index: 1200; top: 84px; left: 50%; transform: translateX(-50%); border-radius: var(--raio); padding: 9px 14px; }
+.legenda {
+  position: fixed; z-index: 900; bottom: max(16px, env(safe-area-inset-bottom)); left: max(16px, env(safe-area-inset-left));
+  width: min(232px, calc(100vw - 24px)); border-radius: var(--raio); overflow: hidden;
+  background: var(--superficie); border: 1px solid var(--linha); box-shadow: var(--sombra);
+}
+.botaoLegenda {
+  display: flex; align-items: center; gap: 7px; width: 100%; min-height: 28px; padding: 3px 9px;
+  border: 0; border-radius: 0; background: transparent; color: var(--texto); text-align: left; font-size: 12px; font-weight: 650;
+}
+.botaoLegenda svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.rotuloLegenda { flex: 1; }
+.setaLegenda { color: var(--suave); font-size: 12px; }
+.corpoLegenda { display: grid; gap: 2px; padding: 0 9px 3px; }
+.grupoLegenda { display: grid; gap: 3px; }
+#legendaGeo[hidden] { display: none !important; }
+.grupoLegenda h3 { margin: 0; color: var(--suave); font-size: 11px; font-weight: 650; line-height: 1.2; letter-spacing: .04em; text-transform: uppercase; }
+.linhaLegenda { display: flex; align-items: center; gap: 5px; min-height: 16px; color: var(--texto); font-size: 11px; line-height: 1.2; }
+.amostraFoco { display: inline-grid; flex: 0 0 auto; place-items: center; width: 16px; height: 16px; border-radius: 5px; background: #d8d4c8; }
+.amostraFoco svg { display: block; overflow: visible; }
+.potenciasLegenda { display: flex; justify-content: space-between; gap: 2px; }
+.potenciaLegenda { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; font-size: 11px; }
+.areasLegenda { flex-wrap: wrap; gap: 3px; }
+.amostraIdade { display: inline-flex; align-items: center; gap: 3px; }
+.pontoIdade { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--cor-amostra); opacity: var(--opacidade-amostra); }
+.areaLegenda { display: inline-block; flex: 0 0 auto; width: 13px; height: 9px; border: 2px solid var(--cor-area); border-radius: 50%; }
+.amostraVento { width: 16px; height: 16px; flex: 0 0 auto; color: #1f6fb2; }
+.rodapeLegenda { margin: 0; padding-top: 2px; color: var(--suave); font-size: 10px; line-height: 1.2; }
+.legenda:not(.aberta) { width: 40px; height: 40px; border-radius: var(--raio); }
+.legenda:not(.aberta) .botaoLegenda { width: 40px; height: 40px; min-height: 40px; padding: 11px; justify-content: center; }
+.legenda:not(.aberta) .rotuloLegenda, .legenda:not(.aberta) .setaLegenda, .legenda:not(.aberta) .corpoLegenda { display: none; }
+.leaflet-control-zoom { border: 0 !important; box-shadow: var(--sombra) !important; }
+.leaflet-control-zoom a { width: 42px !important; height: 42px !important; line-height: 42px !important; background: var(--superficie) !important; color: var(--texto) !important; }
+.setaArea { width: 40px; height: 40px; display: grid; place-items: center; background: transparent; }
+.setaArea svg { width: 25px; height: 25px; }
+.marcadorArea { background: transparent; border: 0; }
+.folhaHandle { display: none; }
+@media (max-width: 800px) {
+  .cartao { top: auto; right: 0; bottom: 0; left: 0; width: 100%; max-height: min(68vh, 620px); border-radius: var(--raio); padding: 10px 16px max(16px, env(safe-area-inset-bottom)); }
+  .folhaHandle { display: block; width: 38px; height: 4px; background: var(--suave); opacity: .55; border-radius: var(--raio); margin: 0 auto 12px; }
+  .popover { top: auto; bottom: 0; left: 0; right: 0; width: 100%; max-height: min(68vh, 620px); border-radius: var(--raio); padding: 16px 18px max(18px, env(safe-area-inset-bottom)); }
+  #menuFiltros { top: auto; }
+  .legenda { bottom: max(14px, env(safe-area-inset-bottom)); }
+  .semAreas { bottom: max(18px, env(safe-area-inset-bottom)); }
+  .faixaEscolha { top: 68px; width: calc(100vw - 24px); text-align: center; }
+  .leaflet-bottom.leaflet-right { bottom: max(16px, env(safe-area-inset-bottom)); }
+  .leaflet-control-attribution { margin-right: 8px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+:root {
+  color-scheme: light;
+  --sup: #ffffff; --sup-hover: #f2f4f6; --sup-ativa: #e6e9ec;
+  --txt: #1f2933; --txt-suave: #5b6773; --linha: #d0d5da;
+  --acento: #c2410c; --raio: 2px; --sombra: 0 2px 6px rgba(0,0,0,.30);
+  --bg: #f3f1ec; --painel: var(--sup); --texto: var(--txt); --suave: var(--txt-suave);
+  --superficie: var(--sup); --fonte: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { font: 14px/1.4 var(--fonte); color: var(--txt); background: var(--bg); }
+button, input, select {
+  min-height: 40px; padding: 8px 11px; border: 1px solid var(--linha); border-radius: var(--raio);
+  background: var(--sup); color: var(--txt); font: inherit;
+}
+button:hover:not(:disabled) { background: var(--sup-hover); border-color: var(--linha); }
+button:active:not(:disabled), .acoesTopo button[aria-expanded="true"] { background: var(--sup-ativa); }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+  outline: 2px solid var(--acento); outline-offset: 2px;
+}
+.cartao, .popover, .legenda, .faixaEscolha, .estadoMapa, .avisoZoom, .semAreas, .acoesTopo button,
+.leaflet-popup-content-wrapper, .leaflet-tooltip, .leaflet-control-zoom a {
+  color: var(--txt); background: var(--sup); border: 1px solid var(--linha);
+  border-radius: var(--raio) !important; box-shadow: var(--sombra);
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+.acoesTopo { gap: 8px; }
+.acoesTopo button {
+  width: 40px; height: 40px; min-height: 40px; padding: 9px; border: 0;
+  transition: background-color .15s, transform .15s;
+}
+.acoesTopo button:hover { background: var(--sup-hover); }
+.acoesTopo button[aria-expanded="true"], .acoesTopo #botaoNova:hover {
+  border-color: transparent; box-shadow: var(--sombra);
+}
+.acoesTopo button:active { background: var(--sup-ativa); transform: none; }
+.acoesTopo button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.acoesTopo svg { width: 22px; height: 22px; stroke: var(--txt); stroke-width: 1.75; stroke-linecap: square; stroke-linejoin: miter; }
+.indicadorFiltros { min-width: 20px; height: 20px; border-radius: var(--raio); font-size: 14px; }
+.indicadorAreas { border-color: var(--sup); }
+.estadoFocos { gap: 8px; margin: 0 0 12px; }
+.estadoFocosTexto { font-size: 14px; font-variant-numeric: tabular-nums; }
+.botaoAtualizar { min-height: 40px; padding: 6px 9px; font-size: 14px; }
+.botaoAtualizar svg { width: 18px; height: 18px; }
+.primario { background: var(--acento); color: #fff; border-color: var(--acento); font-weight: 600; }
+.primario:hover:not(:disabled) { background: color-mix(in srgb, var(--acento) 90%, black); }
+.estado, .dica, .areaGrande { font-size: 12px; }
+.estadoMapa, .estadoMapa button, .estadoMapa .fecharStatus { font-size: 14px; }
+.estadoMapa { padding: 8px 10px; }
+.estadoMapa button { min-height: 40px; padding: 6px 9px; }
+.estadoMapa .fecharStatus { width: 40px; min-width: 40px; }
+.semAreas { padding: 10px 12px; font-size: 14px; text-align: center; }
+.cartao {
+  right: max(68px, calc(env(safe-area-inset-right) + 56px));
+  width: min(390px, calc(100vw - 100px)); max-height: calc(100vh - 32px);
+  padding: 16px; border-radius: var(--raio); animation: aparecer .16s ease-out;
+}
+.cabecalhoCartao { align-items: center; }
+.cabecalhoCartao h2, .cabecalhoPopover h2 { margin: 0; font-size: 18px; font-weight: 500; line-height: 1.4; }
+.fechar { width: 40px; min-height: 40px; font-size: 20px; }
+.selo { border-radius: var(--raio); padding: 3px 8px; font-size: 14px; font-weight: 600; }
+.selo.ok { color: #27623f; background: #e6f1e9; }
+.selo.atencao { color: #754300; background: #fff0d6; }
+.selo.alto { color: #8f1d1d; background: #fbe7e7; }
+.secaoCartao { border: 0; padding-top: 0; margin-top: 16px; }
+.secaoCartao h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+.itemFoco, .itemArea { min-height: 44px; text-align: left; }
+.cartao .linhaDado { min-height: 0; margin: 0 0 4px; text-align: left; }
+.itemFoco small { font-size: 12px; }
+.pontoCor { border-color: currentColor; }
+.acoesCartao a { border-radius: var(--raio); background: var(--sup); }
+.popover {
+  top: 16px; right: max(68px, calc(env(safe-area-inset-right) + 56px));
+  width: min(360px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 16px;
+}
+#menuFiltros { top: 64px; }
+.cabecalhoPopover { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.cabecalhoPopover h2 { flex: 1; }
+.fecharPainel {
+  display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px;
+  padding: 0; border: 0; background: transparent; color: var(--txt-suave); font-size: 24px; font-weight: 400;
+  box-shadow: none;
+}
+.fecharPainel:hover:not(:disabled) { color: var(--txt); background: var(--sup-hover); }
+.popover label { gap: 5px; margin: 10px 0; color: var(--txt); font-size: 14px; font-weight: 500; }
+.popover select {
+  width: 100%; min-height: 40px; padding: 8px 36px 8px 10px; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%235b6773' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+.popover .check { display: flex; align-items: center; min-height: 44px; gap: 8px; font-weight: 400; }
+.popover .check input {
+  appearance: none; width: 18px; height: 18px; min-height: 18px; margin: 0; padding: 0;
+  border: 1px solid var(--linha); border-radius: 0; flex: 0 0 18px;
+}
+.popover .check input:checked {
+  border-color: var(--acento); background-color: var(--acento);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M4 9.5l3.5 3.5L14 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='square'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center; background-size: 16px 16px;
+}
+.subtituloMenu { margin: 16px 0 8px; font-size: 16px; font-weight: 600; }
+#porSatelite { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; }
+.porSatelite .contagemFonte { text-align: right; font-variant-numeric: tabular-nums; }
+.dica { margin: 8px 0; }
+.campoForm { gap: 5px; margin: 10px 0; color: var(--txt); font-size: 14px; font-weight: 500; }
+.campoForm input { width: 100%; }
+.faixaEscolha { padding: 10px 14px; font-size: 14px; }
+.legenda {
+  left: max(16px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px); overflow: auto; padding: 16px;
+}
+.cabecalhoLegenda { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.cabecalhoLegenda > svg { width: 22px; height: 22px; flex: 0 0 auto; fill: none; stroke: var(--txt); stroke-width: 1.75; stroke-linecap: square; stroke-linejoin: miter; }
+.rotuloLegenda { flex: 1; font-size: 18px; font-weight: 500; }
+.corpoLegenda { display: grid; gap: 12px; padding: 12px 0 0; }
+.grupoLegenda { display: grid; gap: 6px; }
+.grupoLegenda h3 { margin: 0; color: var(--txt); font-size: 16px; font-weight: 600; line-height: 1.4; letter-spacing: 0; text-transform: none; }
+.linhaLegenda { display: flex; align-items: center; gap: 8px; min-height: 28px; color: var(--txt); font-size: 14px; line-height: 1.4; }
+.amostraFoco { display: inline-grid; flex: 0 0 24px; place-items: center; width: 24px; height: 24px; border-radius: 0; background: transparent; }
+.amostraFoco svg { display: block; width: 24px; height: 24px; overflow: visible; }
+.potenciasLegenda { display: grid; gap: 4px; }
+.potenciaLegenda { display: inline-flex; align-items: center; gap: 8px; white-space: normal; font-size: 14px; }
+.idadeLegenda { display: flex; justify-content: space-between; gap: 8px; }
+.idadeItem { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; white-space: nowrap; }
+.pontoIdade { width: 10px; height: 10px; }
+.notaLegenda, .rodapeLegenda { margin: 0; color: var(--txt-suave); font-size: 12px; line-height: 1.4; }
+.areasLegenda { justify-content: space-between; gap: 8px; flex-wrap: nowrap; }
+.areaLegendaItem { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.areaLegenda { width: 16px; height: 12px; }
+.amostraVento { width: 24px; height: 24px; flex: 0 0 24px; color: #1f6fb2; }
+.abrirLegenda { display: none; }
+.legenda:not(.aberta) { width: 40px; height: 40px; min-height: 40px; overflow: hidden; padding: 0; }
+.legenda:not(.aberta) .cabecalhoLegenda, .legenda:not(.aberta) .corpoLegenda { display: none; }
+.legenda:not(.aberta) .abrirLegenda {
+  display: grid; place-items: center; width: 40px; height: 40px; min-height: 40px;
+  margin: -1px; padding: 8px; border: 0; background: var(--sup); box-shadow: none;
+}
+.abrirLegenda svg { width: 22px; height: 22px; fill: none; stroke: var(--txt); stroke-width: 1.75; stroke-linecap: square; stroke-linejoin: miter; }
+.leaflet-control-zoom { margin: 0 16px 16px 0 !important; border: 0 !important; box-shadow: var(--sombra) !important; }
+/* Tamanho só na regra base: o :hover tem prioridade maior e, no toque, fica "preso" depois do toque,
+   o que antes encolhia o botão "+" para 40 px no mobile. */
+.leaflet-control-zoom a {
+  width: 40px !important; height: 40px !important; line-height: 1 !important;
+}
+.leaflet-control-zoom a, .leaflet-control-zoom a:hover, .leaflet-control-zoom a:focus {
+  display: grid; place-items: center;
+  border: 0 !important; color: var(--txt) !important; background: var(--sup) !important; font: 22px/1 var(--fonte) !important;
+}
+.leaflet-control-zoom a:active { background: var(--sup-ativa) !important; }
+.leaflet-control-zoom a.leaflet-disabled { opacity: .45; }
+.leaflet-control-zoom-in { border-bottom: 1px solid var(--linha) !important; }
+.leaflet-control-attribution { font-size: 12px !important; background: var(--sup) !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--sup); }
+.leaflet-popup-content-wrapper { padding: 2px; }
+.leaflet-popup-content { margin: 12px; font: 14px/1.4 var(--fonte); }
+.leaflet-popup-close-button { width: 40px !important; height: 40px !important; color: var(--txt-suave) !important; font: 24px/36px var(--fonte) !important; }
+.leaflet-tooltip { padding: 6px 8px; font: 14px/1.4 var(--fonte); }
+.setaArea { background: transparent; }
+@media (max-width: 800px) {
+  .cartao, .popover { top: auto; right: 0; bottom: 0; left: 0; width: 100%; max-height: min(68vh, 620px); border-radius: var(--raio) !important; padding: 16px 16px max(16px, env(safe-area-inset-bottom)); }
+  .folhaHandle { width: 38px; height: 4px; background: var(--txt-suave); border-radius: var(--raio); opacity: .55; margin: 0 auto 12px; }
+  #menuFiltros { top: auto; }
+  .legenda { bottom: max(16px, env(safe-area-inset-bottom)); }
+  .acoesTopo button, .leaflet-control-zoom a, .botaoAtualizar, .fecharPainel, .popover select { min-height: 44px; }
+  .acoesTopo button { width: 44px; height: 44px; }
+  .leaflet-control-zoom a { width: 44px !important; height: 44px !important; }
+  .legenda:not(.aberta) { width: 44px; height: 44px; min-height: 44px; }
+  .legenda:not(.aberta) .abrirLegenda { width: 44px; height: 44px; min-height: 44px; }
+  .semAreas { bottom: max(18px, env(safe-area-inset-bottom)); }
+  .faixaEscolha { top: 68px; width: calc(100vw - 24px); text-align: center; }
+  .leaflet-bottom.leaflet-right { bottom: max(16px, env(safe-area-inset-bottom)); }
+  .leaflet-control-zoom { margin: 0 12px 12px 0 !important; }
+  .leaflet-control-attribution { margin-right: 8px !important; }
+  .acoesForm button, .acoesCartao button, .acoesCartao a, .estadoMapa button, #restaurarFiltros, .campoForm input { min-height: 44px; }
+  .estadoMapa .fecharStatus { width: 44px; min-width: 44px; }
+  .itemFoco small { font-size: 14px; }
+  .estado { font-size: 14px; }
+  .leaflet-popup-close-button { width: 44px !important; height: 44px !important; }
+}
+@media (max-height: 699px) and (min-width: 801px) {
+  .legenda.aberta { max-height: calc(100vh - 32px); }
+}
+
+/* Mobile: painéis e legenda nunca sobem até a coluna de botões (Nova área, Filtros, Áreas),
+   senão os botões cobrem o X de fechar. Fica por último para vencer as regras acima.
+   180px = 16px de margem + 3 botões de 44px + 2 vãos de 8px + 16px de folga. */
+@media (max-width: 800px) {
+  .cartao, .popover {
+    max-height: min(68vh, 620px, calc(100vh - 180px));
+    max-height: min(68dvh, 620px, calc(100dvh - 180px - env(safe-area-inset-top)));
+  }
+  .legenda.aberta {
+    max-height: calc(100vh - 196px); /* 196 = 180 + 16 de margem inferior da legenda */
+    max-height: calc(100dvh - 196px - env(safe-area-inset-top));
+    padding: 12px 16px;
+  }
+  .legenda .corpoLegenda { gap: 8px; padding-top: 8px; }
+  .legenda .grupoLegenda { gap: 4px; }
+  .legenda .linhaLegenda { min-height: 24px; }
+}
+
+/* Telas de toque não têm "passar o mouse": sem isto, o último botão tocado ficava cinza (hover preso). */
+@media (hover: none) {
+  button:hover:not(:disabled):not([aria-expanded="true"]) { background: var(--sup); border-color: var(--linha); }
+  button.primario:hover:not(:disabled):not([aria-expanded="true"]) { background: var(--acento); border-color: var(--acento); }
+  .acoesTopo button:hover:not([aria-expanded="true"]) { border-color: transparent; }
+  .fecharPainel:hover:not(:disabled) { background: transparent; color: var(--txt-suave); }
+}
+
+/* Aviso de que a regra de zoom está escondendo focos (canto superior esquerdo, longe dos botões da direita) */
+.avisoZoom {
+  position: fixed; z-index: 900; top: max(16px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left));
+  max-width: min(380px, calc(100vw - 110px)); padding: 8px 10px; font-size: 12px; line-height: 1.35; overflow-wrap: anywhere;
+}
+@media (max-width: 800px) { .avisoZoom { max-width: calc(100vw - 96px); font-size: 12px; } }
+
+/* Cadastro: ponto e raio x imóvel (shapefile) */
+.seletorModo { display: grid; grid-template-columns: 1fr 1fr; margin: 10px 0; }
+.seletorModo button { border-radius: 0; font-size: 13px; font-weight: 500; }
+.seletorModo button + button { border-left-width: 0; }
+.seletorModo button.ativo { background: var(--acento, var(--brasa)); border-color: var(--acento, var(--brasa)); color: #fff; font-weight: 600; }
+.campoForm input[type="file"] { padding: 0; font-size: 13px; color: var(--suave); cursor: pointer; overflow: hidden; }
+/* Botão "Escolher arquivo" no mesmo desenho dos demais botões da página: canto reto, borda fina, sem arredondar */
+input[type="file"]::file-selector-button {
+  min-height: 38px; margin: 0 10px 0 0; padding: 8px 12px; border: 0; border-right: 1px solid var(--linha); border-radius: 0;
+  background: var(--sup); color: var(--txt); font: inherit; font-weight: 500; cursor: pointer;
+}
+input[type="file"]:hover::file-selector-button { background: var(--sup-hover); }
+.resumoImovelErro { color: var(--alto); }

@@ -1,0 +1,17 @@
+{
+  "name": "focosamazonia",
+  "version": "1.0.0",
+  "description": "Painel para monitorar focos de incêndio na Amazônia. Você marca áreas por latitude, longitude e raio, e o sistema avisa quando há focos por perto e mostra a direção do vento.",
+  "main": "server.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@napi-rs/canvas": "^1.1.0"
+  }
+}

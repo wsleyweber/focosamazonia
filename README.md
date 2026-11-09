@@ -3,6 +3,10 @@
 
 Painel para monitorar focos de incêndio na Amazônia (a região exata é definida em `assets/regiao.geojson`; veja "Região monitorada"). O mapa ocupa a tela; você cadastra áreas sob demanda, acompanha os focos e o vento e abre detalhes de cada área ao selecioná-la. Os alertas automáticos são enviados pelo webhook configurado.
 
+![Painel mostrando os focos de calor detectados por satélite na Amazônia Legal, com a legenda de potência, confirmação e idade dos focos](docs/painel.png)
+
+<sub>Exemplo do painel. Focos: NASA FIRMS. Mapa base: © contribuidores do OpenStreetMap.</sub>
+
 > **Aviso de segurança:** este servidor **não tem autenticação**. Qualquer pessoa que alcance a porta pode listar, criar e apagar áreas e disparar webhooks. Por isso ele escuta só em `127.0.0.1` por padrão. Para acessá-lo de outra máquina, coloque-o atrás de um proxy com senha (Caddy, nginx, Cloudflare Access) ou de uma VPN (Tailscale) antes de mudar `HOST`.
 
 > **Aviso de responsabilidade:** o painel não substitui os canais oficiais (Corpo de Bombeiros 193, INPE Queimadas). Os dados de satélite têm atraso, a ausência de focos não significa segurança e os limites de alerta são pontos de partida, não critérios técnicos validados. O software é fornecido sem garantia (veja `LICENSE`).

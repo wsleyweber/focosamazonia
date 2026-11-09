@@ -29,6 +29,24 @@ try {
 const PORT = process.env.PORT || 3000;
 // Por padrão só aceita conexões da própria máquina. Em Docker ou atrás de proxy em outra máquina, use HOST=0.0.0.0.
 const HOST = process.env.HOST || "127.0.0.1";
+// Basic Auth opcional (site e API). Só fica ativo quando usuário e senha estão definidos.
+const BASIC_USER = process.env.BASIC_AUTH_USER || "";
+const BASIC_PASS = process.env.BASIC_AUTH_PASS || "";
+const AUTH_ATIVA = Boolean(BASIC_USER && BASIC_PASS);
+const hashSha = (v) => crypto.createHash("sha256").update(String(v)).digest();
+const HASH_USER = hashSha(BASIC_USER);
+const HASH_PASS = hashSha(BASIC_PASS);
+function credenciaisValidas(req) {
+  const m = /^Basic\s+(.+)$/i.exec(req.headers.authorization || "");
+  if (!m) return false;
+  const texto = Buffer.from(m[1], "base64").toString("utf8");
+  const i = texto.indexOf(":");
+  if (i < 0) return false;
+  // Compara os hashes, que têm sempre o mesmo tamanho, em tempo constante; avalia os dois campos sempre.
+  const okUser = crypto.timingSafeEqual(hashSha(texto.slice(0, i)), HASH_USER);
+  const okPass = crypto.timingSafeEqual(hashSha(texto.slice(i + 1)), HASH_PASS);
+  return okUser && okPass;
+}
 const MAP_KEY = process.env.FIRMS_MAP_KEY || "";
 const CACHE_MIN = Number(process.env.CACHE_MINUTOS || 10);
 const MONITOR_MIN = Number(process.env.MONITOR_MINUTOS || 10);
@@ -112,7 +130,7 @@ function melhoraCoberta(nivelNotificado, politica = AVISAR_MELHORA) {
 // Focos a menos de DEDUP_KM um do outro, vistos por satélites diferentes, contam como o mesmo fogo
 const DEDUP_KM = Number(process.env.DEDUP_KM || 1.5);
 const observadorGeo = criarObservador(
-  path.join(__dirname, "dados", "observacao-geo.jsonl"),
+  path.join(armazenamento.diretorioDados(), "observacao-geo.jsonl"),
   DEDUP_GEO_KM,
   geo.distanciaKm
 );
@@ -662,7 +680,14 @@ async function servirEstatico(req, res, arq) {
 const servidor = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   try {
+    const autenticado = !AUTH_ATIVA || credenciaisValidas(req);
+    if (!autenticado && u.pathname !== "/api/saude") {
+      res.writeHead(401, { "WWW-Authenticate": 'Basic realm="Monitor de focos", charset="UTF-8"', "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify({ erro: "autenticação necessária" }));
+    }
     if (u.pathname === "/api/saude") {
+      // Sem credenciais (healthcheck da hospedagem) só informa que está de pé, sem detalhes das áreas.
+      if (!autenticado) return json(res, 200, { ok: true });
       return json(res, 200, {
         ok: true,
         modo: MAP_KEY ? "api com MAP_KEY" : "arquivos sem chave (24h)",
@@ -826,9 +851,14 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 function iniciar() {
+  if (Boolean(BASIC_USER) !== Boolean(BASIC_PASS)) {
+    console.error("BASIC_AUTH_USER e BASIC_AUTH_PASS precisam ser definidos juntos. Encerrando para não subir sem autenticação.");
+    process.exit(1);
+  }
   servidor.listen(PORT, HOST, () => {
     console.log(`Monitor de focos (${NOME_REGIAO}) em http://${HOST}:${PORT}`);
-    if (HOST !== "127.0.0.1" && HOST !== "localhost" && HOST !== "::1")
+    if (AUTH_ATIVA) console.log("Basic Auth ativo.");
+    else if (HOST !== "127.0.0.1" && HOST !== "localhost" && HOST !== "::1")
       console.log("Atenção: o servidor não tem autenticação. Proteja-o com um proxy com senha ou VPN antes de expô-lo.");
     console.log(MAP_KEY ? "Usando a API da FIRMS com MAP_KEY." : "Sem FIRMS_MAP_KEY: usando arquivos públicos das últimas 24h.");
     console.log(WEBHOOK_URL_PADRAO ? "Webhook padrão configurado em .env." : "Nenhum webhook padrão em .env (pode ser definido por área, no painel).");
